@@ -4,11 +4,15 @@ services:
     image: minio/minio
     entrypoint: [""]
     command: ["sh", "-c", "mkdir -p /data/mimir && minio server --quiet /data"]
+    # command:  minio server /data --console-address ":9001"
     environment:
       - MINIO_ROOT_USER=mimir
       - MINIO_ROOT_PASSWORD=supersecret
+      - MINIO_CONSOLE_ADDRESS=:9001
     volumes:
-      - minio-data:/data
+      - monitoring-data:/data
+    ports:
+      - "9000:9001"
 
   grafana:
     image: grafana/grafana:latest
@@ -35,7 +39,7 @@ services:
       - ../../../../../operations/mimir-mixin-compiled/dashboards/mimir-top-tenants.json:/var/lib/grafana/dashboards/mimir-top-tenants.json:ro
       - ../../../../../operations/mimir-mixin-compiled/dashboards/mimir-writes.json:/var/lib/grafana/dashboards/mimir-writes.json:ro
     ports:
-      - 9000:3000
+      - 9007:3000
 
   prometheus:
     image: prom/prometheus:latest
@@ -45,6 +49,9 @@ services:
       - --storage.tsdb.path=/prometheus
       - --web.console.libraries=/usr/share/prometheus/console_libraries
       - --web.console.templates=/usr/share/prometheus/consoles
+      - '--storage.tsdb.min-block-duration=1m'
+      - '--storage.tsdb.max-block-duration=1m'
+      - '--storage.tsdb.retention.time=15d'
     volumes:
       - ./config/prometheus.yaml:/etc/prometheus/prometheus.yml
       - ../../../../../operations/mimir-mixin-compiled/rules.yaml:/etc/prometheus/rules.yaml
@@ -52,6 +59,8 @@ services:
       - "mimir-1"
       - "mimir-2"
       - "mimir-3"
+    ports:
+      - 9090:9090
 
   load-balancer:
     image: nginx:latest
@@ -99,6 +108,26 @@ services:
 
 volumes:
   mimir-1-data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.1.0.130,rw,nolock,soft
+      device: ":/nfs-csi-testing/mimir-1-data"
   mimir-2-data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.1.0.130,rw,nolock,soft
+      device: ":/nfs-csi-testing/mimir-2-data"
   mimir-3-data:
-  minio-data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.1.0.130,rw,nolock,soft
+      device: ":/nfs-csi-testing/mimir-3-data"
+  monitoring-data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.1.0.130,rw,nolock,soft
+      device: ":/nfs-csi-testing/monitoring-data"

@@ -19,6 +19,7 @@ scrape_configs:
       - targets: ["mimir-3:8080"]
         labels:
           pod: "mimir-3"
+      - targets: ['10.0.16.189:30000','10.0.6.17:31839']
 
 remote_write:
   - url: http://load-balancer:9009/api/v1/push
